@@ -45,6 +45,7 @@ pub fn data_type_to_string(data_type: &DataType) -> String {
     DataType::Date => "DATE".to_string(),
     DataType::Time(..) => "TIME".to_string(),
     DataType::Timestamp(..) => "TIMESTAMP".to_string(),
+    DataType::Uuid => "UUID".to_string(),
     _ => format!("{:?}", data_type), // fallack for unhandled data types
   }
 }
@@ -54,7 +55,7 @@ pub fn sql_to_typescript_type(sql_type: &str) -> &str {
   match sql_type.split('(').next().unwrap().to_uppercase().as_str() {
     "INTEGER" | "INT" | "SMALLINT" | "BIGINT" => "number",
     "FLOAT" | "REAL" | "DOUBLE" => "number",
-    "CHAR" | "VARCHAR" | "TEXT" => "string",
+    "CHAR" | "VARCHAR" | "TEXT" | "UUID" => "string",
     "BOOLEAN" => "boolean",
     "DATE" | "TIME" | "TIMESTAMP" => "Date",
     _ => "any",
