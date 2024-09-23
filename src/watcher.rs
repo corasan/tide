@@ -3,8 +3,13 @@ use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watche
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
-pub fn init_watcher(path: &Path) -> notify::Result<()> {
+mod schema_processor;
+
+pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
   let (tx, rx) = channel();
   let mut watcher = RecommendedWatcher::new(
     move |res: Result<Event, notify::Error>| {
@@ -19,7 +24,14 @@ pub fn init_watcher(path: &Path) -> notify::Result<()> {
 
   println!("Watcher started. Press Ctrl-C to quit.");
   println!("Watching for changes in: {}", path.to_str().unwrap());
+  // list all SQL files in the migrations directory
   list_sql_files(path)?;
+
+  let path_arc = Arc::new(path.to_path_buf());
+  let output_file_arc = Arc::new(output_file.to_path_buf());
+
+  let mut last_event = std::time::Instant::now();
+  let debounce_duration = Duration::from_secs(2);
 
   for res in rx {
     match res {
@@ -43,6 +55,22 @@ pub fn init_watcher(path: &Path) -> notify::Result<()> {
                     file_name_str.white().underline()
                   );
                 }
+              }
+
+              let now = std::time::Instant::now();
+              if now.duration_since(last_event) >= debounce_duration {
+                last_event = now;
+
+                let path_clone = Arc::clone(&path_arc);
+                let output_file_clone = Arc::clone(&output_file_arc);
+
+                thread::spawn(move || {
+                  println!("Processing migrations...");
+                  match schema_processor::process_migrations(&path_clone) {
+                    Ok(_) => println!("Migrations processed successfully."),
+                    Err(e) => println!("Error processing migrations: {:?}", e),
+                  }
+                });
               }
             }
           }
