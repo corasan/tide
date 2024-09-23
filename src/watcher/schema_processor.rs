@@ -3,6 +3,7 @@ use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 mod utils;
@@ -94,12 +95,12 @@ fn generate_typescript_types(schema: &HashMap<String, Table>) -> String {
   let mut typescript = String::new();
 
   for (_, table) in schema {
-    typescript.push_str(&format!("interface {} {{\n", table.name));
+    typescript.push_str(&format!("export interface {} {{\n", table.name));
     for column in &table.columns {
       let ts_type = utils::sql_to_typescript_type(&column.data_type);
       typescript.push_str(&format!(
         "  {}{}: {}\n",
-        column.name,
+        column.name.replace("\"", ""),
         if column.nullable { "?" } else { "" },
         ts_type
       ));
@@ -116,16 +117,17 @@ pub fn process_migrations(migrations_dir: &Path, output_file: &Path) -> std::io:
 
   let mut schema = HashMap::new();
 
-  println!("creating types...");
   for migration in migrations {
     let content = fs::read_to_string(&migration)?;
     parse_migration(&content, &mut schema);
   }
 
+  println!("Generating TypeScript types...");
   let typescript = generate_typescript_types(&schema);
 
-  fs::write(output_file, typescript)?;
-  println!("TypeScript written to file: {:?}", output_file);
+  let mut file = fs::File::create(output_file)?;
+  file.write_all(typescript.as_bytes())?;
+  println!("TypeScript types written successfully!");
 
   Ok(())
 }
