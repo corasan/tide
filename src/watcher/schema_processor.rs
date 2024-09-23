@@ -47,7 +47,10 @@ fn parse_migration(content: &str, schema: &mut HashMap<String, Table>) {
   let ast = match Parser::parse_sql(&dialect, content) {
     Ok(ast) => ast,
     Err(e) => {
-      println!("Error parsing SQL: {:?}", e);
+      println!(
+        "Warning: Error parsing SQL (this statement will be ignored): {:?}",
+        e
+      );
       return;
     }
   };
@@ -55,7 +58,7 @@ fn parse_migration(content: &str, schema: &mut HashMap<String, Table>) {
   for statement in ast {
     match statement {
       Statement::CreateTable(CreateTable { name, columns, .. }) => {
-        let table_name = name.to_string();
+        let table_name = utils::extract_table_name(&name);
         let pascal_case_name = utils::to_pascal_case(&table_name);
         let columns = utils::parse_columns(&columns);
         schema.insert(
@@ -95,7 +98,7 @@ fn generate_typescript_types(schema: &HashMap<String, Table>) -> String {
     for column in &table.columns {
       let ts_type = utils::sql_to_typescript_type(&column.data_type);
       typescript.push_str(&format!(
-        "  {}{}: {};\n",
+        "  {}{}: {}\n",
         column.name,
         if column.nullable { "?" } else { "" },
         ts_type
