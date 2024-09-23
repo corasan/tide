@@ -12,8 +12,13 @@ mod watcher;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+  /// Path to the directory containing SQL migration files
   #[arg(short, long)]
   path: String,
+
+  /// Output file path for the generated TS types
+  #[arg(short, long)]
+  output: String,
 }
 
 fn main() {
@@ -21,8 +26,9 @@ fn main() {
 
   let args = Args::parse();
   let path = Path::new(&args.path);
+  let output_file = Path::new(&args.output);
 
-  watcher::init_watcher(path).unwrap();
+  watcher::init_watcher(path, output_file).unwrap();
 }
 
 fn init_logger() {
