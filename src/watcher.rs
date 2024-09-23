@@ -9,6 +9,15 @@ use std::time::Duration;
 
 mod schema_processor;
 
+pub fn generate_types(migrations_dir: &Path, output_file: &Path) -> std::io::Result<()> {
+  match schema_processor::process_migrations(migrations_dir, output_file) {
+    Ok(_) => println!("Initial TypeScript types generated successfully!\n"),
+    Err(e) => eprintln!("Error generating initial TypeScript types: {}", e),
+  }
+
+  Ok(())
+}
+
 pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
   let (tx, rx) = channel();
   let mut watcher = RecommendedWatcher::new(
@@ -26,6 +35,7 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
   println!("Watching for changes in: {}", path.to_str().unwrap());
   // list all SQL files in the migrations directory
   list_sql_files(path)?;
+  generate_types(path, output_file)?;
 
   let path_arc = Arc::new(path.to_path_buf());
   let output_file_arc = Arc::new(output_file.to_path_buf());
@@ -66,7 +76,9 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
 
                 thread::spawn(move || {
                   println!("Processing migrations...");
-                  match schema_processor::process_migrations(&path_clone) {
+                  println!("Migrations directory: {:?}", path_clone);
+                  println!("Output file: {:?}", output_file_clone);
+                  match schema_processor::process_migrations(&path_clone, &output_file_clone) {
                     Ok(_) => println!("Migrations processed successfully."),
                     Err(e) => println!("Error processing migrations: {:?}", e),
                   }

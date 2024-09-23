@@ -28,7 +28,9 @@ fn main() {
   let path = Path::new(&args.path);
   let output_file = Path::new(&args.output);
 
-  watcher::init_watcher(path, output_file).unwrap();
+  if let Err(e) = watcher::init_watcher(path, output_file) {
+    eprintln!("Error initializing watcher: {:?}", e);
+  };
 }
 
 fn init_logger() {
@@ -48,6 +50,6 @@ fn init_logger() {
         record.args()
       )
     })
-    .filter(None, LevelFilter::max())
+    .filter(None, LevelFilter::Off)
     .init();
 }
