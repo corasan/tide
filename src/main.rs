@@ -7,8 +7,6 @@ use std::path::Path;
 
 mod watcher;
 
-// let path = "../routinify/supabase"
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
