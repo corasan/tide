@@ -83,7 +83,7 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
 
               thread::spawn(move || {
                 match schema_processor::process_migrations(&path_clone, &output_file_clone) {
-                  Ok(_) => println!("{}", "Updated types".green()),
+                  Ok(_) => {}
                   Err(e) => println!("Error processing migrations: {:?}", e),
                 }
               });

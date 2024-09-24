@@ -133,7 +133,7 @@ pub fn process_migrations(migrations_dir: &Path, output_file: &Path) -> std::io:
   let new_typescript = generate_typescript_types(&schema);
 
   match diff::compare_and_update_types(&new_typescript, output_file) {
-    Ok(true) => println!("{}", "\nUpdated types".green()),
+    Ok(true) => println!("{}", "Updated types".green()),
     Ok(false) => println!("Types are up to date. No changes needed."),
     Err(e) => eprintln!("Error updating TypeScript types file: {}", e),
   }
