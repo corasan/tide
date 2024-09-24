@@ -12,7 +12,7 @@ mod schema_processor;
 
 pub fn generate_types(migrations_dir: &Path, output_file: &Path) -> std::io::Result<()> {
   match schema_processor::process_migrations(migrations_dir, output_file) {
-    Ok(_) => println!("Initial TypeScript types generated successfully!\n"),
+    Ok(_) => println!("\n"),
     Err(e) => eprintln!("Error generating initial TypeScript types: {}", e),
   }
 
@@ -32,8 +32,11 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
     .watch(Path::new(&path), RecursiveMode::Recursive)
     .unwrap();
 
-  println!("Watcher started. Press Ctrl-C to quit.");
-  println!("Watching for changes in: {}", path.to_str().unwrap());
+  println!("{}", "Watcher started. Press Ctrl-C to quit.".blue());
+  println!(
+    "Watching for changes in: {}\n",
+    path.to_str().unwrap().blue()
+  );
   list_sql_files(path)?;
   generate_types(path, output_file)?;
 
@@ -80,7 +83,7 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
 
               thread::spawn(move || {
                 match schema_processor::process_migrations(&path_clone, &output_file_clone) {
-                  Ok(_) => println!("Successfully updated TypeScript types."),
+                  Ok(_) => println!("{}", "Updated types".green()),
                   Err(e) => println!("Error processing migrations: {:?}", e),
                 }
               });

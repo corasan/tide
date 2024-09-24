@@ -1,3 +1,4 @@
+use colored::*;
 use sqlparser::ast::{
   AlterTableOperation::{AddColumn, DropColumn},
   CreateTable, Statement,
@@ -6,9 +7,9 @@ use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
+mod diff;
 mod utils;
 
 // Struct to represent a column in a table
@@ -129,11 +130,13 @@ pub fn process_migrations(migrations_dir: &Path, output_file: &Path) -> std::io:
     parse_migration(&content, &mut schema);
   }
 
-  println!("Generating TypeScript types...");
-  let typescript = generate_typescript_types(&schema);
+  let new_typescript = generate_typescript_types(&schema);
 
-  let mut file = fs::File::create(output_file)?;
-  file.write_all(typescript.as_bytes())?;
+  match diff::compare_and_update_types(&new_typescript, output_file) {
+    Ok(true) => println!("{}", "\nUpdated types".green()),
+    Ok(false) => println!("Types are up to date. No changes needed."),
+    Err(e) => eprintln!("Error updating TypeScript types file: {}", e),
+  }
 
   Ok(())
 }
