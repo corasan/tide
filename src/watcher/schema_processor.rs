@@ -127,7 +127,6 @@ pub fn process_migrations(migrations_dir: &Path, output_file: &Path) -> std::io:
 
   let mut file = fs::File::create(output_file)?;
   file.write_all(typescript.as_bytes())?;
-  println!("TypeScript types written successfully!");
 
   Ok(())
 }

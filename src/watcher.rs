@@ -1,11 +1,12 @@
 use colored::*;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod schema_processor;
 
@@ -33,14 +34,13 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
 
   println!("Watcher started. Press Ctrl-C to quit.");
   println!("Watching for changes in: {}", path.to_str().unwrap());
-  // list all SQL files in the migrations directory
   list_sql_files(path)?;
   generate_types(path, output_file)?;
 
   let path_arc = Arc::new(path.to_path_buf());
   let output_file_arc = Arc::new(output_file.to_path_buf());
 
-  let mut last_event = std::time::Instant::now();
+  let mut last_events: HashMap<std::path::PathBuf, Instant> = HashMap::new();
   let debounce_duration = Duration::from_secs(2);
 
   for res in rx {
@@ -56,6 +56,14 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
         for path in event.paths {
           if let Some(extension) = path.extension() {
             if extension == "sql" {
+              let now = Instant::now();
+              if let Some(last_event_time) = last_events.get(&path) {
+                if now.duration_since(*last_event_time) < debounce_duration {
+                  continue; // Skip this event if it's too soon after the last one
+                }
+              }
+              last_events.insert(path.clone(), now);
+
               if let Some(file_name) = path.file_name() {
                 if let Some(file_name_str) = file_name.to_str() {
                   println!(
@@ -67,23 +75,15 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
                 }
               }
 
-              let now = std::time::Instant::now();
-              if now.duration_since(last_event) >= debounce_duration {
-                last_event = now;
+              let path_clone = Arc::clone(&path_arc);
+              let output_file_clone = Arc::clone(&output_file_arc);
 
-                let path_clone = Arc::clone(&path_arc);
-                let output_file_clone = Arc::clone(&output_file_arc);
-
-                thread::spawn(move || {
-                  println!("Processing migrations...");
-                  println!("Migrations directory: {:?}", path_clone);
-                  println!("Output file: {:?}", output_file_clone);
-                  match schema_processor::process_migrations(&path_clone, &output_file_clone) {
-                    Ok(_) => println!("Migrations processed successfully."),
-                    Err(e) => println!("Error processing migrations: {:?}", e),
-                  }
-                });
-              }
+              thread::spawn(move || {
+                match schema_processor::process_migrations(&path_clone, &output_file_clone) {
+                  Ok(_) => println!("Successfully updated TypeScript types."),
+                  Err(e) => println!("Error processing migrations: {:?}", e),
+                }
+              });
             }
           }
         }
