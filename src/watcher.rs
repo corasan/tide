@@ -41,7 +41,7 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
   let output_file_arc = Arc::new(output_file.to_path_buf());
 
   let mut last_events: HashMap<std::path::PathBuf, Instant> = HashMap::new();
-  let debounce_duration = Duration::from_secs(2);
+  let debounce_duration = Duration::from_secs(1);
 
   for res in rx {
     match res {

@@ -1,4 +1,7 @@
-use sqlparser::ast::{CreateTable, Statement};
+use sqlparser::ast::{
+  AlterTableOperation::{AddColumn, DropColumn},
+  CreateTable, Statement,
+};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use std::collections::HashMap;
@@ -70,21 +73,25 @@ fn parse_migration(content: &str, schema: &mut HashMap<String, Table>) {
           },
         );
       }
-      // Statement::AlterTable { name, operation } => {
-      //   let table_name = name.to_string();
-      //   if let Some(table) = schema.get_mut(&table_name) {
-      //     match operation {
-      //       AlterTableOperation::AddColumn { column_def, .. } => {
-      //         let column = parse_column(&column_def);
-      //         table.columns.push(column);
-      //       }
-      //       AlterTableOperation::DropColumn { name, .. } => {
-      //         table.columns.retain(|c| c.name != name.to_string());
-      //       }
-      //       _ => {} // Handle other alter table operations as needed
-      //     }
-      //   }
-      // }
+      Statement::AlterTable {
+        name, operations, ..
+      } => {
+        let table_name = name.to_string().replace("\"", "");
+        if let Some(table) = schema.get_mut(&table_name) {
+          for operation in operations {
+            match operation {
+              AddColumn { column_def, .. } => {
+                let column = utils::parse_column(&column_def);
+                table.columns.push(column);
+              }
+              DropColumn { column_name, .. } => {
+                table.columns.retain(|c| c.name != column_name.to_string());
+              }
+              _ => {} // Handle other alter table operations as needed
+            }
+          }
+        }
+      }
       _ => {} // Ignore other types of statements
     }
   }
