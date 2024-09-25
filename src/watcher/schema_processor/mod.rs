@@ -10,22 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod diff;
+mod structs;
+pub use structs::{Column, Table};
 mod utils;
-
-// Struct to represent a column in a table
-#[derive(Debug, Clone)]
-struct Column {
-  name: String,
-  data_type: String,
-  nullable: bool,
-}
-
-// Struct to represent a table
-#[derive(Debug)]
-struct Table {
-  name: String,
-  columns: Vec<Column>,
-}
 
 // read SQL migrations in chronological order
 fn read_migrations(dir: &Path) -> Vec<PathBuf> {
@@ -47,7 +34,7 @@ fn read_migrations(dir: &Path) -> Vec<PathBuf> {
 }
 
 // Parse a SQL migration file and add the parsed schema to the schema map
-fn parse_migration(content: &str, schema: &mut HashMap<String, Table>) {
+fn parse_migration(content: &str, schema: &mut HashMap<String, structs::Table>) {
   let dialect = GenericDialect {}; // or use the appropriate dialect for your SQL flavor
   let ast = match Parser::parse_sql(&dialect, content) {
     Ok(ast) => ast,
@@ -132,7 +119,7 @@ pub fn process_migrations(migrations_dir: &Path, output_file: &Path) -> std::io:
 
   let new_typescript = generate_typescript_types(&schema);
 
-  match diff::compare_and_update_types(&new_typescript, output_file) {
+  match diff::compare_and_update_types(&new_typescript, output_file, &schema) {
     Ok(true) => println!("{}", "Updated types".green()),
     Ok(false) => println!("Types are up to date. No changes needed."),
     Err(e) => eprintln!("Error updating TypeScript types file: {}", e),
