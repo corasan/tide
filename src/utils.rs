@@ -1,6 +1,5 @@
+use crate::custom_table_def::Column;
 use sqlparser::ast::{ColumnDef, DataType, ObjectName};
-
-use super::Column;
 
 pub fn extract_table_name(object_name: &ObjectName) -> String {
   // Get the last part of the object name (which should be the table name)

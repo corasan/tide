@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-mod schema_processor;
+use crate::schema_processor;
 
 pub fn generate_types(migrations_dir: &Path, output_file: &Path) -> std::io::Result<()> {
   match schema_processor::process_migrations(migrations_dir, output_file) {
@@ -98,7 +98,7 @@ pub fn init_watcher(path: &Path, output_file: &Path) -> notify::Result<()> {
   Ok(())
 }
 
-fn list_sql_files(dir: &Path) -> std::io::Result<()> {
+pub fn list_sql_files(dir: &Path) -> std::io::Result<()> {
   let mut sql_files = Vec::new();
   let mut dirs_to_search = vec![dir.to_path_buf()];
 

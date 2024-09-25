@@ -6,7 +6,7 @@ pub struct Column {
   pub nullable: bool,
 }
 
-// // Struct to represent a table
+// Struct to represent a table
 #[derive(Debug)]
 pub struct Table {
   pub name: String,

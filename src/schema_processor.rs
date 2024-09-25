@@ -8,11 +8,11 @@ use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-
 mod diff;
-mod structs;
-pub use structs::{Column, Table};
-mod utils;
+mod typescript;
+
+use crate::custom_table_def::Table;
+use crate::utils;
 
 // read SQL migrations in chronological order
 fn read_migrations(dir: &Path) -> Vec<PathBuf> {
@@ -34,7 +34,7 @@ fn read_migrations(dir: &Path) -> Vec<PathBuf> {
 }
 
 // Parse a SQL migration file and add the parsed schema to the schema map
-fn parse_migration(content: &str, schema: &mut HashMap<String, structs::Table>) {
+fn parse_migration(content: &str, schema: &mut HashMap<String, Table>) {
   let dialect = GenericDialect {}; // or use the appropriate dialect for your SQL flavor
   let ast = match Parser::parse_sql(&dialect, content) {
     Ok(ast) => ast,

@@ -5,6 +5,9 @@ use log::LevelFilter;
 use std::io::Write;
 use std::path::Path;
 
+mod custom_table_def;
+mod schema_processor;
+mod utils;
 mod watcher;
 
 #[derive(Parser, Debug)]
