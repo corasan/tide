@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug)]
 pub struct TypeScriptInterface {
   pub name: String,
-  pub columns: Vec<Column>,
+  pub content: Vec<String>,
 }
 
 fn parse_typescript(content: &str) -> Vec<TypeScriptInterface> {
@@ -25,10 +25,17 @@ fn parse_typescript(content: &str) -> Vec<TypeScriptInterface> {
         .to_string();
       current_interface = Some(TypeScriptInterface {
         name,
-        columns: Vec::new(),
+        content: Vec::new(),
       });
       count = 1;
     } else if let Some(ref mut interface) = current_interface {
+      interface.content.push(line.to_string());
+      count += trimmed_line.matches('{').count();
+      count -= trimmed_line.matches('}').count();
+
+      if count == 0 {
+        interfaces.push(current_interface.take().unwrap());
+      }
     }
   }
   interfaces
