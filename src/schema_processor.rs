@@ -1,3 +1,4 @@
+use crate::custom_table_def::Table;
 use colored::*;
 use sqlparser::ast::{
   AlterTableOperation::{AddColumn, DropColumn},
@@ -8,11 +9,10 @@ use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+
 mod diff;
 mod typescript;
-
-use crate::custom_table_def::Table;
-use crate::utils;
+mod utils;
 
 // read SQL migrations in chronological order
 fn read_migrations(dir: &Path) -> Vec<PathBuf> {
