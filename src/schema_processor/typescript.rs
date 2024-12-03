@@ -1,107 +1,125 @@
 use super::utils;
-use crate::custom_table_def::{Column, Table};
-use std::collections::{HashMap, HashSet};
+use crate::custom_table_def::Table;
+use std::collections::HashMap;
 
-// Struct to represent a TS interface
 #[derive(Debug)]
-pub struct TypeScriptInterface {
-  pub name: String,
-  pub content: Vec<String>,
+struct InterfaceLocation {
+  start: usize,
+  end: usize,
+  // content: Vec<String>,
 }
 
-fn parse_typescript(content: &str) -> Vec<TypeScriptInterface> {
-  let mut interfaces = Vec::new();
-  let mut current_interface: Option<TypeScriptInterface> = None;
-  let mut count = 0;
+pub fn update_ts_interfaces(content: &str, schema: &HashMap<String, Table>) -> String {
+  // Split content into lines, filtering out empty lines at the end
+  let mut lines: Vec<String> = content
+    .lines()
+    .map(|s| s.to_string())
+    .collect::<Vec<String>>();
 
-  for line in content.lines() {
-    let trimmed_line = line.trim();
+  // Remove trailing empty lines
+  while lines.last().map_or(false, |line| line.trim().is_empty()) {
+    lines.pop();
+  }
 
-    if trimmed_line.starts_with("export interface") {
-      let name = trimmed_line
+  let interface_locations = find_interface_locations(&lines);
+  let mut updated_interfaces = Vec::new();
+  let mut processed_names = std::collections::HashSet::new();
+
+  // Process existing interfaces
+  for (name, location) in &interface_locations {
+    if let Some(table) = schema.values().find(|t| t.name == *name) {
+      let interface_content = generate_interface_content(name, table);
+      updated_interfaces.push((location.start, location.end, interface_content));
+      processed_names.insert(name.clone());
+    }
+  }
+
+  // Sort updates from last to first to avoid invalidating indices
+  updated_interfaces.sort_by(|a, b| b.0.cmp(&a.0));
+
+  // Apply updates
+  for (start, end, content) in updated_interfaces {
+    lines.splice(start..=end, content);
+  }
+
+  // Add new interfaces
+  for (_, table) in schema {
+    if !processed_names.contains(&table.name) {
+      if !lines.is_empty() {
+        lines.push(String::new()); // Add spacing
+      }
+      lines.extend(generate_interface_content(&table.name, table));
+    }
+  }
+
+  // Ensure proper ending
+  if !lines.is_empty() {
+    lines.push(String::new());
+  }
+
+  lines.join("\n")
+}
+
+fn generate_interface_content(name: &str, table: &Table) -> Vec<String> {
+  let mut content = Vec::new();
+  content.push(format!("export interface {} {{", name));
+
+  // Add columns
+  for column in &table.columns {
+    let col_name = column.name.replace("\"", "");
+    let ts_type = utils::sql_to_typescript_type(&column.data_type);
+    let nullable_suffix = if column.nullable { "?" } else { "" };
+    content.push(format!("  {}{}: {}", col_name, nullable_suffix, ts_type));
+  }
+
+  content.push("}".to_string());
+
+  println!("{}", content.join("\n"));
+  content
+}
+
+fn find_interface_locations(lines: &[String]) -> HashMap<String, InterfaceLocation> {
+  let mut locations = HashMap::new();
+  let mut i = 0;
+
+  while i < lines.len() {
+    let line = &lines[i];
+    if line.trim().starts_with("export interface") {
+      let name = line
         .split_whitespace()
         .nth(2)
         .unwrap_or("")
         .trim_end_matches('{')
         .to_string();
-      current_interface = Some(TypeScriptInterface {
-        name,
-        content: Vec::new(),
-      });
-      count = 1;
-    } else if let Some(ref mut interface) = current_interface {
-      interface.content.push(line.to_string());
-      count += trimmed_line.matches('{').count();
-      count -= trimmed_line.matches('}').count();
 
-      if count == 0 {
-        interfaces.push(current_interface.take().unwrap());
-      }
-    }
-  }
-  interfaces
-}
+      let start = i;
+      let mut brace_count = line.matches('{').count() as i32;
+      let mut content = vec![line.clone()];
+      let mut end = i;
 
-fn is_property_line(line: &str) -> bool {
-  let trimmed = line.trim();
-  trimmed.contains(':')
-}
-
-pub fn update_ts_interfaces(content: &str, schema: &HashMap<String, Table>) -> String {
-  let mut interfaces = parse_typescript(content);
-  let mut updated_content = String::new();
-
-  for (table_name, table) in schema {
-    let pscal_case_name = utils::to_pascal_case(table_name);
-    let interface_idx = interfaces.iter().position(|i| i.name == pscal_case_name);
-
-    if let Some(interface_idx) = interface_idx {
-      let interface = &mut interfaces[interface_idx];
-      let mut updated_lines = Vec::new();
-      let mut existing_cols = HashSet::new();
-
-      for line in &interface.content {
-        if is_property_line(line) {
-          let col_name = line.split(':').next().unwrap().trim().to_string();
-          existing_cols.insert(col_name);
-        }
-        updated_lines.push(line.clone());
-      }
-
-      for column in &table.columns {
-        let col_name = column.name.replace("\"", "");
-        let ts_type = utils::sql_to_typescript_type(&column.data_type);
-        let nullabe_suffix = if column.nullable { "?" } else { "" };
-        let new_line = format!("  {}{}: {};\n", col_name, nullabe_suffix, ts_type);
-
-        if !existing_cols.contains(&col_name) {
-          updated_lines.push(new_line);
+      while brace_count > 0 && end < lines.len() {
+        end += 1;
+        if end < lines.len() {
+          let current_line = &lines[end];
+          content.push(current_line.clone());
+          brace_count += current_line.matches('{').count() as i32;
+          brace_count -= current_line.matches('}').count() as i32;
         }
       }
-      interface.content = updated_lines;
-    } else {
-      let mut new_interface = TypeScriptInterface {
-        name: pscal_case_name.clone(),
-        content: Vec::new(),
-      };
-      new_interface.content.push("{".to_string());
-      for col in &table.columns {
-        let col_name = col.name.replace("\"", "");
-        let ts_type = utils::sql_to_typescript_type(&col.data_type);
-        let nullabe_suffix = if col.nullable { "?" } else { "" };
-        let new_line = format!("  {}{}: {};\n", col_name, nullabe_suffix, ts_type);
-        new_interface.content.push(new_line);
+
+      if brace_count == 0 {
+        locations.insert(
+          name,
+          InterfaceLocation {
+            start,
+            end,
+            // content,
+          },
+        );
       }
-      new_interface.content.push("}".to_string());
-      interfaces.push(new_interface);
     }
+    i += 1;
   }
 
-  for interface in interfaces {
-    updated_content.push_str(&format!("export interface {} {{\n", interface.name));
-    updated_content.push_str(&interface.content.join("\n"));
-    updated_content.push_str("}\n\n");
-  }
-
-  updated_content
+  locations
 }

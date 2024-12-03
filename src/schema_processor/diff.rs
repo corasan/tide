@@ -1,5 +1,5 @@
 use log::info;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -20,7 +20,7 @@ pub fn compare_and_update_types(
     file.read_to_string(&mut current_content)?;
   }
 
-  let updated_content = update_ts_interfaces(&current_content, schema);
+  let compared_content = update_ts_interfaces(&current_content, schema);
 
   if !output_file.exists() {
     info!("TypeScript types file doesn't exist. Creating a new file.");
@@ -56,10 +56,11 @@ pub fn compare_and_update_types(
       .truncate(true)
       .open(output_file)?;
 
-    for line in new_lines.iter() {
-      writeln!(file, "{}", line)?;
-    }
+    // for line in new_lines.iter() {
+    //   writeln!(file, "{}", line)?;
+    // }
 
+    write!(file, "{}", compared_content)?;
     Ok(true)
   } else {
     Ok(false)
